@@ -1,0 +1,202 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Untitled Document</title>
+<style type="text/css">
+	* { padding:0; margin:0; }
+	.textareaScroll { width:430px; height:200px; border:1px solid #000; position:relative; margin:50px; border-radius:10px; padding: 10px; }
+	.textareaScroll textarea {width:415px; height:200px; overflow-x:hidden; overflow-y:scroll; resize:none; border:none; color:#666; }
+	.textareaScroll .scrollWrapper { background: none repeat scroll 0 0 #F0F0F0; height: 200px; position: absolute; right: 15px; top: 10px; width: 30px; border-radius: 10px; }
+	.textareaScroll .btUP { width:30px; height:30px; background:#F90; position:absolute; top:0; right:0; border-radius: 10px 10px 0 0; }
+	.textareaScroll .btDW { width:30px; height:30px; background:#F90; position:absolute; bottom:0; right:0; border-radius: 0 0 10px 10px; }
+	.textareaScroll .btDR { width:30px; height:10px; background:#F60; position:absolute; top:50%; right:0; }
+</style>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script type="text/javascript">
+
+jQuery.fn.extend({
+    TextareaScroll: function (options) {
+		var settings = {
+			upButtonClass : 'btUP',
+			downButtonClass : 'btDW',
+			dragButtonClass : 'btDR',
+			wrapperClass : 'textareaScroll',
+			scrollWrapperClass : 'scrollWrapper',
+			percentPerClick : 0.05,
+			showDrag : true
+		}
+		
+		jQuery.extend(settings,options);
+		
+        return this.each(function (i) {
+			var $textArea = jQuery(this), 
+				$wrapper = null, 
+				$scrollWrapper = null, 
+				$btns = null, 
+				$drag = null,
+				$document = $(document),
+				IsMouseDown = false;
+		   
+			$textArea.wrap('<div class="' + settings.wrapperClass + '" />');
+
+			$wrapper = $textArea.parent();
+			$wrapper.append('<div class="' + settings.scrollWrapperClass + '" />');
+
+			$scrollWrapper = $wrapper.find('.' + settings.scrollWrapperClass);
+			$scrollWrapper.append('<div class="' + settings.upButtonClass + '" />');
+			$scrollWrapper.append('<div class="' + settings.downButtonClass + '" />');
+			$scrollWrapper.append('<div class="' + settings.dragButtonClass + '" />');
+
+			$btns = $wrapper.find('.' + settings.upButtonClass + ', .' + settings.downButtonClass);
+			$drag = $wrapper.find('.' + settings.dragButtonClass);
+		   
+		   
+			$drag.bind('mousedown', OnMouseDown);
+			$textArea.bind('scroll input',UpdateRolagem);
+			
+			$btns.bind('mousedown',function(){
+				IsMouseDown = true;
+				MouseTimer(this);
+				return false;
+			}).bind('mouseup',function(){
+				IsMouseDown = false;
+				return false;
+			});
+			
+			UpdateTextArea(1);
+			
+			function MouseTimer(el){
+				var pc = $textArea.data('pc');
+				if($(el).hasClass('btUP')) {
+					UpdateTextArea(pc - settings.percentPerClick);
+				} else {
+					UpdateTextArea(pc + settings.percentPerClick);
+				}
+				
+				if(IsMouseDown)
+					setTimeout(function(){MouseTimer(el)},100);
+			}
+
+			function OnMouseDown(e){
+				$document.bind('mousemove', OnMouseMove).bind('mouseup', OnMouseUp);
+				return false;
+			}
+
+			function OnMouseMove(e){
+				var my = e.clientY || e.pageY;
+				
+				my += document.documentElement.scrollTop;
+				
+				var cy = $wrapper.offset().top;
+				var py = my-cy;
+				var bth = $btns.height();
+				var dwh = $drag.height();
+				var swh = $scrollWrapper.height();
+				
+				var topLimit = bth;
+				var bottomLimit = swh-(bth+dwh);
+				
+				if(py < topLimit)
+					py = topLimit;
+				
+				if(py > bottomLimit)
+					py = bottomLimit;
+				
+				$drag.css('top',py);
+				
+				var pc = (py-bth) / (bottomLimit-bth);
+				UpdateTextArea(pc);
+				return false;
+			}
+
+			function OnMouseUp(e){
+				$document.unbind('mousemove', OnMouseMove).unbind('mouseup', OnMouseUp);
+				return false;
+			}
+		   
+			function UpdateRolagem(){
+				var sh = $textArea[0].scrollHeight,
+					st = $textArea[0].scrollTop,
+					th = $textArea.height(),
+					pc = ((st) / (sh-th));
+				
+				$textArea.data('pc', pc);
+				
+				if(sh > th) {
+					$btns.show();
+					$drag.show();
+					
+					var bth = $btns.height();
+					var dwh = $drag.height();
+					var swh = $scrollWrapper.height();
+					
+					var dragMaxSize = swh-((bth*2));
+					var dwh = Math.round(Math.max(dragMaxSize * (th/sh),10));
+					
+					$drag.css({
+						top : Math.round((((swh-((bth*2)+dwh)) * pc) + (bth+dwh)) - (dwh>>1) ),
+						height : dwh,
+						marginTop : -dwh>>1
+					});
+				} else {
+					$btns.hide();
+					$drag.hide();
+				}
+			}
+
+			function UpdateTextArea(pc){
+				if(pc > 1)
+					pc = 1;
+				
+				if(pc < 0)
+					pc = 0;
+
+				var max = $textArea[0].scrollHeight,
+					min = $textArea.height(),
+					total = max - min;
+				$textArea.data('pc', pc);
+				$textArea.scrollTop(total * pc);
+				UpdateRolagem();
+			}
+		   
+        });
+    }
+});
+
+$(function(){
+	$('.txaTeste').TextareaScroll();
+});
+
+</script>
+</head>
+
+<body>
+	
+	<textarea class="txaTeste" name="teste" id="testeTA1" cols="30" rows="10"></textarea>
+	<textarea class="txaTeste" name="teste" id="testeTA2" cols="30" rows="10"></textarea>
+	<textarea class="txaTeste" name="teste" id="testeTA3" cols="30" rows="10"></textarea>
+	
+	<div id="hcard-teste-aldeia" class="vcard" style="display:none;"><br />
+		<p>Teste Aldeia<br /><br />
+		<br /></p><br />
+		<span class="fn n"><br />
+		<span class="given-name">Lucas</span><br />
+		<span class="additional-name">Dupke</span><br />
+		<span class="family-name">Costa</span><br />
+		<span class="org">Aldeia</span><br />
+		<span class="tel">51-3341-1234</span><br />
+		<a class="url" href="http://www.aldeia.biz/">Aldeia.biz</a>
+		</span><br />
+		<a class="email" href="mailto:lucas@aldeia.biz">lucas@aldeia.biz</a><br />
+		<div class="adr"><br />
+			<span class="street">Rua Congo, 265</span>,<br />
+			<span class="locality">Passo da Areia - Porto Alegre</span>,<br />
+			<span class="region">Rio Grande do Sul</span>,<br />
+			<span class="postal-code">91380070</span><br />
+			<span class="country-name">Brasil</span><br />
+		</div><br />
+	</div>
+	
+</body>
+</html>
